@@ -1,4 +1,17 @@
 {
+    "hooks": {
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run pyrefly check --baseline pyrefly-baseline.json >&2 || exit 2",
+                        "timeout": 30
+                    }
+                ]
+            }
+        ]
+    },
     "permissions": {
         "allow": [
             "Bash(awk:*)",

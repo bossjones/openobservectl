@@ -1,0 +1,16 @@
+{
+  "errors": [
+    {
+      "line": 61,
+      "column": 59,
+      "stop_line": 61,
+      "stop_column": 84,
+      "path": "tests/test_common.py",
+      "code": -2,
+      "name": "bad-argument-type",
+      "description": "Argument `(c: str) -> None` is not assignable to parameter `runner` with type `(str) -> dict[str, Any]` in function `openobservectl.common.resolve_target`",
+      "concise_description": "Argument `(c: str) -> None` is not assignable to parameter `runner` with type `(str) -> dict[str, Any]` in function `openobservectl.common.resolve_target`",
+      "severity": "error"
+    }
+  ]
+}

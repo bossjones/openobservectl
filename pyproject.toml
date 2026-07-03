@@ -27,6 +27,7 @@ dev = [
     "ruff>=0.11",
     "basedpyright>=1.19",
     "codespell>=2.3",
+    "pyrefly>=1.1.1",
 ]
 
 [build-system]
@@ -65,3 +66,7 @@ markers = [
 [tool.basedpyright]
 include = ["src"]
 typeCheckingMode = "standard"
+
+[tool.pyrefly]
+project-includes = ["src", "tests"]
+python-version = "3.11"          # matches .python-version and requires-python floor
