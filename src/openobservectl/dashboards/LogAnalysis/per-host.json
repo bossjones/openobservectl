@@ -1,0 +1,98 @@
+{
+  "version": 5,
+  "dashboardId": "per-host",
+  "title": "Per-Host / Per-Stream",
+  "description": "Volume and errors for one host/source. In this topology stream = host (host_logs=server, k0s_host=k0s).",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "stream",
+        "label": "Stream (host)",
+        "multiSelect": false,
+        "value": "host_logs",
+        "options": [
+          { "label": "host_logs (server)", "value": "host_logs" },
+          { "label": "container_logs (server)", "value": "container_logs" },
+          { "label": "otlp_logs (apps)", "value": "otlp_logs" },
+          { "label": "k0s_host (k0s)", "value": "k0s_host" },
+          { "label": "k0s_pods (k0s)", "value": "k0s_pods" }
+        ]
+      }
+    ],
+    "showDynamicFilters": false
+  },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_volume",
+          "type": "line",
+          "title": "Volume — $stream",
+          "description": "Total rows over time for the selected stream.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"$stream\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "total", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"$stream\" WHERE match_all('error') GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "errors", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 10, "i": 1 }
+        },
+        {
+          "id": "panel_recent",
+          "type": "table",
+          "title": "Recent lines — $stream",
+          "description": "Most recent rows for the selected stream.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp AS \"x_axis_1\", body AS \"x_axis_2\" FROM \"$stream\" ORDER BY _timestamp DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_logs",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": null },
+                  { "label": "message", "alias": "x_axis_2", "column": "body", "aggregationFunction": null }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 10, "w": 48, "h": 10, "i": 2 }
+        }
+      ]
+    }
+  ]
+}

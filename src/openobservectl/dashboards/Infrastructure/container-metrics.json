@@ -1,0 +1,123 @@
+{
+  "version": 5,
+  "dashboardId": "container-metrics",
+  "title": "Container Metrics",
+  "description": "Per-container CPU/memory/network/filesystem from cadvisor (job=cadvisor), covering the monitoring server's compose stack and the k0s node's containers. Does not cover NetBox's Postgres/Redis containers — those aren't cadvisor-scraped in this lab.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_cpu_by_container",
+          "type": "line",
+          "title": "CPU seconds/sec by container",
+          "description": "Named containers only (cadvisor also reports cgroup slices with an empty name, filtered out here).",
+          "config": { "show_legends": true, "unit": null, "decimals": 2 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (container_label_com_docker_compose_service, name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "container_cpu_usage_seconds_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{container_label_com_docker_compose_service}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_memory_by_container",
+          "type": "line",
+          "title": "Memory usage by container",
+          "description": "",
+          "config": { "show_legends": true, "unit": "bytes", "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (container_label_com_docker_compose_service, name) (container_memory_usage_bytes{name!=\"\"})",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "container_memory_usage_bytes", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{container_label_com_docker_compose_service}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_network_by_container",
+          "type": "line",
+          "title": "Network receive+transmit bytes/sec by container",
+          "description": "",
+          "config": { "show_legends": true, "unit": "bytes", "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (container_label_com_docker_compose_service, name) (rate(container_network_receive_bytes_total{name!=\"\"}[5m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "container_network_receive_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{container_label_com_docker_compose_service}} rx", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "sum by (container_label_com_docker_compose_service, name) (rate(container_network_transmit_bytes_total{name!=\"\"}[5m]))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "container_network_transmit_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{container_label_com_docker_compose_service}} tx", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 24, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_fs_usage_by_container",
+          "type": "line",
+          "title": "Filesystem usage % by container",
+          "description": "container_fs_usage_bytes / container_fs_limit_bytes.",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * (container_fs_usage_bytes{name!=\"\"} / container_fs_limit_bytes{name!=\"\"})",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "container_fs_usage_bytes", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{container_label_com_docker_compose_service}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 9, "w": 24, "h": 9, "i": 4 }
+        },
+        {
+          "id": "panel_top_memory_table",
+          "type": "table",
+          "title": "Top containers by memory (current)",
+          "description": "Latest working-set memory per container, highest first.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT name AS \"x_axis_1\", container_label_com_docker_compose_service AS \"x_axis_2\", MAX(value) AS \"x_axis_3\" FROM \"container_memory_working_set_bytes\" WHERE name != '' GROUP BY x_axis_1, x_axis_2 ORDER BY x_axis_3 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "container_memory_working_set_bytes",
+                "stream_type": "metrics",
+                "x": [
+                  { "label": "container", "alias": "x_axis_1", "column": "name", "aggregationFunction": null },
+                  { "label": "service", "alias": "x_axis_2", "column": "container_label_com_docker_compose_service", "aggregationFunction": null },
+                  { "label": "working set bytes", "alias": "x_axis_3", "column": "value", "aggregationFunction": "max" }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 48, "h": 9, "i": 5 }
+        }
+      ]
+    }
+  ]
+}

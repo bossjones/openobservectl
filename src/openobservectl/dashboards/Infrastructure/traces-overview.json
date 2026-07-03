@@ -1,0 +1,118 @@
+{
+  "version": 5,
+  "dashboardId": "traces-overview",
+  "title": "Traces Overview",
+  "description": "OTLP traces pushed by apps to the collector (:4317/:4318). Note: `otlp_logs` names BOTH a logs stream and a traces stream in this cluster — the otel-collector's traces pipeline and its app-log pipeline share the `stream-name: otlp_logs` header, but OpenObserve keys streams by (name, type), so this queries stream_type=traces specifically. Field names (service_name, http_status_code, http_route, span_status, duration) follow OpenObserve's native OTLP trace schema; reconfirm against `GET /api/default/streams/otlp_logs/schema?type=traces` once real traffic flows (no app currently pushes traces in this lab).",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_span_volume",
+          "type": "line",
+          "title": "Span volume over time",
+          "description": "Total spans ingested, across every service.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(service_name) AS \"y_axis_1\" FROM \"otlp_logs\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "spans", "alias": "y_axis_1", "column": "service_name", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_error_spans",
+          "type": "line",
+          "title": "Error spans over time",
+          "description": "Spans with span_status = ERROR.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(_timestamp) AS \"y_axis_1\" FROM \"otlp_logs\" WHERE span_status IN ('ERROR') GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "errors", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_latency_percentiles",
+          "type": "line",
+          "title": "Latency percentiles",
+          "description": "p50/p90/p95/p99 span duration.",
+          "config": { "show_legends": true, "unit": "microseconds", "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", approx_percentile_cont(duration, 0.5) AS percentile_50, approx_percentile_cont(duration, 0.9) AS percentile_90, approx_percentile_cont(duration, 0.95) AS percentile_95, approx_percentile_cont(duration, 0.99) AS percentile_99 FROM \"otlp_logs\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "x_axis_1", "aggregationFunction": "histogram" }],
+                "y": [
+                  { "label": "p50", "alias": "percentile_50", "column": "percentile_50", "aggregationFunction": null },
+                  { "label": "p90", "alias": "percentile_90", "column": "percentile_90", "aggregationFunction": null },
+                  { "label": "p95", "alias": "percentile_95", "column": "percentile_95", "aggregationFunction": null },
+                  { "label": "p99", "alias": "percentile_99", "column": "percentile_99", "aggregationFunction": null }
+                ],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 48, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_volume_by_service",
+          "type": "table",
+          "title": "Volume by service",
+          "description": "Span count per service.name, busiest first.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT service_name AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"otlp_logs\" GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "service", "alias": "x_axis_1", "column": "service_name", "aggregationFunction": null }],
+                "y": [{ "label": "spans", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 48, "h": 9, "i": 4 }
+        }
+      ]
+    }
+  ]
+}

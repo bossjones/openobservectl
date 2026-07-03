@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: ruff format --check
+        run: uv run ruff format --check .
+      - name: ruff check
+        run: uv run ruff check .
+      - name: basedpyright
+        run: uv run basedpyright
+      - name: codespell
+        run: uv run codespell src tests
+      - name: pytest
+        run: uv run pytest
+      - name: entrypoints smoke test
+        run: |
+          uv run openobservectl --help
+          uv run python -m openobservectl --help

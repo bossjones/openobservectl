@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+dist/
+
+# macOS
+.DS_Store
+
+# Claude Code hook noise
+.claude/settings.local.json
+logs/
