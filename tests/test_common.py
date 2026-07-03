@@ -226,3 +226,24 @@ def test_print_json_emits_parseable_json(capsys):
     oc.print_json({"a": 1, "b": [1, 2]})
     out = capsys.readouterr().out
     assert json.loads(out) == {"a": 1, "b": [1, 2]}
+
+
+# ------------------------------------------------------------ parse_duration_seconds
+
+
+@pytest.mark.parametrize(
+    ("text", "seconds"),
+    [("30s", 30), ("5m", 300), ("1h", 3600), ("2d", 172800)],
+)
+def test_parse_duration_seconds_parses_s_m_h_d(text, seconds):
+    assert oc.parse_duration_seconds(text) == seconds
+
+
+@pytest.mark.parametrize("text", ["5", "5x", "m5", ""])
+def test_parse_duration_seconds_rejects_bad_format(text):
+    with pytest.raises(ValueError):
+        oc.parse_duration_seconds(text)
+
+
+def test_parse_duration_seconds_tolerates_surrounding_whitespace():
+    assert oc.parse_duration_seconds(" 5m ") == 300

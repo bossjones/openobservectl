@@ -12,9 +12,9 @@ profile > `tofu output` (via `--lab-root`, for a multipass-lab checkout).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
-import time
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -27,6 +27,8 @@ from rich.table import Table
 
 from openobservectl import common as oc
 from openobservectl import config as ocfg
+from openobservectl import render as orender
+from openobservectl import tail as otail
 
 PORT = 5080
 DEFAULT_USER = "admin@example.com"
@@ -64,13 +66,19 @@ class Ctx:
     timeout: float
     insecure: bool
 
+    def _client_kwargs(self) -> dict[str, Any]:
+        return {
+            "base_url": self.base_url,
+            "auth": (self.user, self.password),
+            "timeout": self.timeout,
+            "verify": not self.insecure,
+        }
+
     def client(self) -> httpx.Client:
-        return httpx.Client(
-            base_url=self.base_url,
-            auth=(self.user, self.password),
-            timeout=self.timeout,
-            verify=not self.insecure,
-        )
+        return httpx.Client(**self._client_kwargs())
+
+    def async_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(**self._client_kwargs())
 
 
 @app.callback()
@@ -221,6 +229,8 @@ def streams(ctx: typer.Context, type_: str = typer.Option(None, "--type")):
             data = resp.json()
     except httpx.HTTPError as exc:
         _die(f"could not list streams: {exc}")
+    # Show the raw body (not an empty list) when "list" is absent — e.g. an HTTP-200
+    # error payload like {"code": 403, "message": ...} — so the problem stays visible.
     rows = data.get("list", data) if isinstance(data, dict) else data
     _emit(c, rows, title="streams")
 
@@ -235,7 +245,7 @@ def search(
 ):
     """Run a SQL search over a stream (POST /api/{org}/_search)."""
     c = resolve(ctx.obj)
-    now_us = int(time.time() * 1_000_000)
+    now_us = otail.now_micros()
     body = {
         "query": {
             "sql": sql,
@@ -280,6 +290,71 @@ def orgs(ctx: typer.Context):
     except httpx.HTTPError as exc:
         _die(f"could not list orgs: {exc}")
     _emit(c, data.get("data", data) if isinstance(data, dict) else data, title="orgs")
+
+
+# --- logs (tail) --------------------------------------------------------------
+# OpenObserve has no push/subscribe API for new logs, so `logs tail` is sliding-window
+# polling on `_timestamp` via the existing `_search` endpoint (see openobservectl/tail.py).
+
+logs_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Tail logs.")
+app.add_typer(logs_app, name="logs")
+
+
+@logs_app.command("tail")
+def logs_tail(
+    ctx: typer.Context,
+    stream: list[str] = typer.Option(None, "--stream", help="stream(s) to tail (repeatable)"),
+    follow: bool = typer.Option(False, "-f", "--follow", help="keep following new logs"),
+    since: str = typer.Option("5m", "--since", help="initial lookback, e.g. 30s/5m/1h/2d"),
+    sql: str = typer.Option(None, "--sql", help="raw SQL (overrides --stream ordering)"),
+    interval: float = typer.Option(2.0, "--interval", help="poll interval seconds (with -f)"),
+    limit: int = typer.Option(200, "--limit", help="max rows per poll"),
+):
+    """Tail logs via sliding-window polling on `_timestamp` (no server push API)."""
+    if stream and sql:
+        _die("--stream and --sql cannot be combined; pass one or the other", code=2)
+    c = resolve(ctx.obj)
+    try:
+        since_micros = otail.now_micros() - oc.parse_duration_seconds(since) * 1_000_000
+    except ValueError as exc:
+        _die(str(exc))
+
+    def _on_hit(hit: Any) -> None:
+        orender.write_hit(console, hit, as_json=c.as_json)
+
+    async def _run() -> None:
+        async with c.async_client() as client:
+            searcher = otail.AsyncSearchClient(client, c.org)
+            if stream:
+                streams_ = list(stream)
+            elif sql:
+                streams_ = ["query"]
+            else:
+                resp = await client.get(f"/api/{c.org}/streams", params={"type": "logs"})
+                resp.raise_for_status()
+                rows = _extract_list(resp.json(), "list")
+                streams_ = [r["name"] for r in rows if isinstance(r, dict) and r.get("name")]
+                if not streams_:
+                    _die("no logs streams found to tail; pass --stream or --sql", code=2)
+                if not c.as_json:
+                    console.print(f"[dim]tailing: {', '.join(streams_)}[/dim]")
+            await otail.run_tail(
+                searcher,
+                streams=streams_,
+                sql=sql,
+                since_micros=since_micros,
+                interval=interval,
+                size=limit,
+                follow=follow,
+                on_hit=_on_hit,
+            )
+
+    try:
+        asyncio.run(_run())
+    except KeyboardInterrupt:
+        console.print("\n[dim]stopped[/dim]")
+    except httpx.HTTPError as exc:
+        _die(f"tail failed: {exc}")
 
 
 # --- dashboards --------------------------------------------------------------
@@ -630,7 +705,7 @@ def check(
             report.add("logs present", False, "no logs streams")
         else:
             name = logs_streams[0].get("name")
-            now_us = int(time.time() * 1_000_000)
+            now_us = otail.now_micros()
             body = {
                 "query": {
                     "sql": f'SELECT * FROM "{name}"',

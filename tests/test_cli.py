@@ -53,6 +53,18 @@ def test_streams_sends_basic_auth(httpserver):
     assert r.exit_code == 0, r.output
 
 
+def test_streams_surfaces_error_body_when_response_has_no_list_key(httpserver):
+    # A 200 response without a "list" key (e.g. an auth/permission error body) must stay
+    # visible to the user, not silently collapse into an empty streams table.
+    httpserver.expect_request("/healthz").respond_with_json({"status": "ok"})
+    httpserver.expect_request("/api/default/streams").respond_with_json(
+        {"code": 403, "message": "permission denied"}
+    )
+    r = _run(httpserver.url_for(""), "--json", "streams")
+    assert r.exit_code == 0, r.output
+    assert json.loads(r.output) == {"code": 403, "message": "permission denied"}
+
+
 def test_search_returns_hits(httpserver):
     base = _server(httpserver)
     httpserver.expect_request("/api/default/_search", method="POST").respond_with_json(
@@ -77,6 +89,75 @@ def test_query_promql(httpserver):
     r = _run(base, "--json", "query", "up")
     assert r.exit_code == 0, r.output
     assert json.loads(r.output)["data"]["result"][0]["value"][1] == "1"
+
+
+# ------------------------------------------------------------------------ logs tail
+
+
+def test_logs_tail_without_follow_single_window(httpserver):
+    base = _server(httpserver)
+    httpserver.expect_request("/api/default/_search", method="POST").respond_with_json(
+        {"hits": [{"_timestamp": 2_000_000_000_000_000, "log": "hello world"}]}
+    )
+    r = _run(base, "logs", "tail", "--stream", "default", "--since", "5m")
+    assert r.exit_code == 0, r.output
+    assert "hello world" in r.output
+
+
+def test_logs_tail_autodiscovers_logs_streams(httpserver):
+    base = _server(httpserver, streams=[{"name": "container_logs", "stream_type": "logs"}])
+    httpserver.expect_request("/api/default/_search", method="POST").respond_with_json(
+        {"hits": [{"_timestamp": 2_000_000_000_000_000, "log": "hello world"}]}
+    )
+    r = _run(base, "logs", "tail", "--since", "5m")
+    assert r.exit_code == 0, r.output
+    assert "container_logs" in r.output  # status line
+    assert "hello world" in r.output
+
+
+def test_logs_tail_no_logs_streams_exits_nonzero(httpserver):
+    base = _server(httpserver, streams=[])
+    r = _run(base, "logs", "tail", "--since", "5m")
+    assert r.exit_code != 0
+    assert "no logs streams" in r.output
+
+
+def test_logs_tail_stream_and_sql_together_exits_nonzero(httpserver):
+    # Combining --stream with --sql would otherwise run the identical --sql query
+    # once per --stream, independently, duplicating every emitted hit.
+    base = _server(httpserver)
+    r = _run(base, "logs", "tail", "--stream", "a", "--sql", "SELECT * FROM x", "--since", "5m")
+    assert r.exit_code != 0
+    assert "--stream" in r.output and "--sql" in r.output
+
+
+def test_logs_tail_sql_override_skips_autodiscovery(httpserver):
+    base = _server(httpserver, streams=[])  # streams() must NOT be needed/called
+    httpserver.expect_request("/api/default/_search", method="POST").respond_with_json(
+        {"hits": [{"_timestamp": 2_000_000_000_000_000, "log": "custom"}]}
+    )
+    r = _run(base, "logs", "tail", "--sql", "SELECT * FROM x", "--since", "5m")
+    assert r.exit_code == 0, r.output
+    assert "custom" in r.output
+
+
+def test_logs_tail_json_flag_emits_compact_json_lines_only(httpserver):
+    base = _server(httpserver, streams=[{"name": "container_logs", "stream_type": "logs"}])
+    httpserver.expect_request("/api/default/_search", method="POST").respond_with_json(
+        {"hits": [{"_timestamp": 2_000_000_000_000_000, "log": "hello"}]}
+    )
+    r = _run(base, "--json", "logs", "tail", "--since", "5m")
+    assert r.exit_code == 0, r.output
+    assert "tailing:" not in r.output  # --json output stays clean/jq-able (deviation from ooctl)
+    line = r.output.strip().splitlines()[-1]
+    assert json.loads(line)["log"] == "hello"
+
+
+def test_logs_tail_invalid_since_exits_nonzero(httpserver):
+    base = _server(httpserver)
+    r = _run(base, "logs", "tail", "--since", "bogus")
+    assert r.exit_code != 0
+    assert "invalid" in r.output.lower()
 
 
 # -------------------------------------------------------------------------- check
