@@ -1,0 +1,134 @@
+{
+  "version": 5,
+  "dashboardId": "prometheus-health",
+  "title": "Prometheus Health",
+  "description": "Self-monitoring for the Prometheus server: scrape target health, TSDB ingest rate, and rule/notification health.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_targets_up_by_job",
+          "type": "line",
+          "title": "Scrape targets up by job",
+          "description": "Sum of `up` per job — a drop means one or more targets in that job stopped responding.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (job) (up)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "up", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{job}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_down_targets",
+          "type": "table",
+          "title": "Down targets",
+          "description": "Any scrape target currently reporting up == 0.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT job AS \"x_axis_1\", instance AS \"x_axis_2\", value AS \"x_axis_3\" FROM \"up\" WHERE value = 0 GROUP BY x_axis_1, x_axis_2, x_axis_3",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "up",
+                "stream_type": "metrics",
+                "x": [
+                  { "label": "job", "alias": "x_axis_1", "column": "job", "aggregationFunction": null },
+                  { "label": "instance", "alias": "x_axis_2", "column": "instance", "aggregationFunction": null },
+                  { "label": "up", "alias": "x_axis_3", "column": "value", "aggregationFunction": null }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_tsdb_head_series",
+          "type": "line",
+          "title": "TSDB head series",
+          "description": "Active in-memory series — a sustained climb signals cardinality growth.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "prometheus_tsdb_head_series",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "prometheus_tsdb_head_series", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "head series", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 24, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_samples_appended_rate",
+          "type": "line",
+          "title": "Samples appended/sec",
+          "description": "TSDB ingest rate — should track total scrape volume across every enabled exporter.",
+          "config": { "show_legends": true, "unit": null, "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "rate(prometheus_tsdb_head_samples_appended_total[5m])",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "prometheus_tsdb_head_samples_appended_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "samples/sec", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 9, "w": 24, "h": 9, "i": 4 }
+        },
+        {
+          "id": "panel_scrape_duration_by_job",
+          "type": "line",
+          "title": "Scrape duration by job",
+          "description": "Average scrape latency per job — a slow-climbing job is at risk of missing its scrape interval.",
+          "config": { "show_legends": true, "unit": "seconds", "decimals": 3 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "avg by (job) (scrape_duration_seconds)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "scrape_duration_seconds", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{job}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 24, "h": 9, "i": 5 }
+        },
+        {
+          "id": "panel_config_reload_ok",
+          "type": "metric",
+          "title": "Config reload OK",
+          "description": "1 = last config reload succeeded, 0 = it failed (check prometheus.yml.tftpl rendering).",
+          "config": { "show_legends": false, "unit": null, "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "prometheus_config_last_reload_successful",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "prometheus_config_last_reload_successful", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 18, "w": 24, "h": 9, "i": 6 }
+        }
+      ]
+    }
+  ]
+}

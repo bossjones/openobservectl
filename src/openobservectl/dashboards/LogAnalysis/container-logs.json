@@ -1,0 +1,93 @@
+{
+  "version": 5,
+  "dashboardId": "container-logs",
+  "title": "Container Logs",
+  "description": "Server Docker container logs — volume, errors, and stdout/stderr split.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_by_container",
+          "type": "table",
+          "title": "Volume by container (log file)",
+          "description": "Row count per container log file (container id lives in the path).",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT log_file_path AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"container_logs\" GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 30",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "container_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "log_file_path", "alias": "x_axis_1", "column": "log_file_path", "aggregationFunction": null }],
+                "y": [{ "label": "count", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 10, "i": 1 }
+        },
+        {
+          "id": "panel_stdout_stderr",
+          "type": "line",
+          "title": "stdout vs stderr over time",
+          "description": "Volume split by the docker stream attribute.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", stream AS \"breakdown_1\", count(*) AS \"y_axis_1\" FROM \"container_logs\" GROUP BY x_axis_1, breakdown_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "container_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "count", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "breakdown": [{ "label": "stream", "alias": "breakdown_1", "column": "stream", "aggregationFunction": null }],
+                "z": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 10, "i": 2 }
+        },
+        {
+          "id": "panel_recent_container_errors",
+          "type": "table",
+          "title": "Recent container errors",
+          "description": "Most recent container log lines matching 'error'.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp AS \"x_axis_1\", log_file_path AS \"x_axis_2\", body AS \"x_axis_3\" FROM \"container_logs\" WHERE match_all('error') ORDER BY _timestamp DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "container_logs",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": null },
+                  { "label": "log_file_path", "alias": "x_axis_2", "column": "log_file_path", "aggregationFunction": null },
+                  { "label": "message", "alias": "x_axis_3", "column": "body", "aggregationFunction": null }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 10, "w": 48, "h": 10, "i": 3 }
+        }
+      ]
+    }
+  ]
+}

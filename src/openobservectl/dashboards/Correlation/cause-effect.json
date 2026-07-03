@@ -1,0 +1,116 @@
+{
+  "version": 5,
+  "dashboardId": "cause-effect",
+  "title": "Cause & Effect",
+  "description": "Line log-error spikes up against host metrics and traces on a shared time range.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_error_spikes",
+          "type": "line",
+          "title": "Log errors over time (all streams)",
+          "description": "The 'effect' signal — error rows across log streams.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"host_logs\" WHERE match_all('error') GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "host_logs errors", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"container_logs\" WHERE match_all('error') GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "container_logs",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "container_logs errors", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_cpu",
+          "type": "line",
+          "title": "CPU busy % by instance",
+          "description": "Candidate 'cause' — node CPU (PromQL over the metrics stream).",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_mem",
+          "type": "line",
+          "title": "Memory available %",
+          "description": "Candidate 'cause' — available memory ratio (PromQL).",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 9, "w": 24, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_recent_traces",
+          "type": "table",
+          "title": "Recent app events (otlp_logs)",
+          "description": "Recent OTLP rows (logs+traces land here) to line up with the spikes above.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp AS \"x_axis_1\", body AS \"x_axis_2\" FROM \"otlp_logs\" ORDER BY _timestamp DESC LIMIT 100",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": null },
+                  { "label": "body", "alias": "x_axis_2", "column": "body", "aggregationFunction": null }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 48, "h": 10, "i": 4 }
+        }
+      ]
+    }
+  ]
+}

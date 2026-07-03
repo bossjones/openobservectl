@@ -1,0 +1,164 @@
+{
+  "version": 5,
+  "dashboardId": "host-metrics",
+  "title": "Host Metrics",
+  "description": "Per-instance CPU/memory/disk/network from node_exporter (job=node), covering the monitoring server and the k0s node.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_cpu_busy",
+          "type": "line",
+          "title": "CPU busy % by instance",
+          "description": "",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_cpu_seconds_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 24, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_memory_available_pct",
+          "type": "line",
+          "title": "Memory available %",
+          "description": "",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_memory_MemAvailable_bytes", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 0, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_disk_used_pct",
+          "type": "line",
+          "title": "Disk used % by instance/mount",
+          "description": "Real filesystems only (tmpfs/overlay/squashfs excluded).",
+          "config": { "show_legends": true, "unit": "percent", "decimals": 1 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "100 * (1 - (node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs\"}))",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_filesystem_avail_bytes", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}:{{mountpoint}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 48, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_network_receive",
+          "type": "line",
+          "title": "Network receive bytes/sec",
+          "description": "Physical/virtual interfaces only (loopback, veth, kube-bridge excluded).",
+          "config": { "show_legends": true, "unit": "bytes", "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "rate(node_network_receive_bytes_total{device!~\"lo|veth.*|kube-bridge|docker.*\"}[5m])",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_network_receive_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}:{{device}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 24, "h": 9, "i": 4 }
+        },
+        {
+          "id": "panel_network_transmit",
+          "type": "line",
+          "title": "Network transmit bytes/sec",
+          "description": "Physical/virtual interfaces only (loopback, veth, kube-bridge excluded).",
+          "config": { "show_legends": true, "unit": "bytes", "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|kube-bridge|docker.*\"}[5m])",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_network_transmit_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}:{{device}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 18, "w": 24, "h": 9, "i": 5 }
+        },
+        {
+          "id": "panel_disk_io",
+          "type": "line",
+          "title": "Disk I/O bytes/sec",
+          "description": "Read + write throughput per instance/device.",
+          "config": { "show_legends": true, "unit": "bytes", "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "rate(node_disk_read_bytes_total[5m])",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_disk_read_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}:{{device}} read", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "rate(node_disk_written_bytes_total[5m])",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_disk_written_bytes_total", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}:{{device}} write", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 27, "w": 24, "h": 9, "i": 6 }
+        },
+        {
+          "id": "panel_load_average",
+          "type": "line",
+          "title": "Load average (1m/5m/15m)",
+          "description": "",
+          "config": { "show_legends": true, "unit": null, "decimals": 2 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "node_load1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_load1", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}} 1m", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "node_load5",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_load5", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}} 5m", "layer_type": "scatter", "weight_fixed": 1 }
+            },
+            {
+              "query": "node_load15",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "node_load15", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}} 15m", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 27, "w": 24, "h": 9, "i": 7 }
+        }
+      ]
+    }
+  ]
+}

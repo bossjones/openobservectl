@@ -1,0 +1,90 @@
+{
+  "version": 5,
+  "dashboardId": "traces-by-service",
+  "title": "Traces By Service",
+  "description": "Per-service breakdown of OTLP trace data (stream_type=traces on otlp_logs — see Traces Overview for the schema caveat). Uses GROUP BY service_name rather than a $service variable, since query_values variable options need live trace data to populate and none flows in this lab yet.",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_count_by_service",
+          "type": "line",
+          "title": "Span count by service",
+          "description": "Span volume over time, one series per service.name.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", service_name AS \"breakdown_1\", count(*) AS \"y_axis_1\" FROM \"otlp_logs\" GROUP BY x_axis_1, breakdown_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "spans", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "breakdown": [{ "label": "service", "alias": "breakdown_1", "column": "service_name", "aggregationFunction": null }],
+                "z": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_errors_by_service",
+          "type": "table",
+          "title": "Errors by service",
+          "description": "Error-status span count, per service, busiest first.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT service_name AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"otlp_logs\" WHERE span_status IN ('ERROR') GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "service", "alias": "x_axis_1", "column": "service_name", "aggregationFunction": null }],
+                "y": [{ "label": "errors", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_p95_by_service",
+          "type": "table",
+          "title": "P95 latency by service",
+          "description": "95th-percentile span duration, per service, slowest first.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT service_name AS \"x_axis_1\", approx_percentile_cont(duration, 0.95) AS \"y_axis_1\" FROM \"otlp_logs\" GROUP BY x_axis_1 ORDER BY y_axis_1 DESC LIMIT 20",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "otlp_logs",
+                "stream_type": "traces",
+                "x": [{ "label": "service", "alias": "x_axis_1", "column": "service_name", "aggregationFunction": null }],
+                "y": [{ "label": "p95 (us)", "alias": "y_axis_1", "column": "duration", "aggregationFunction": null }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 9, "w": 24, "h": 9, "i": 3 }
+        }
+      ]
+    }
+  ]
+}

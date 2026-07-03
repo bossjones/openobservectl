@@ -1,0 +1,69 @@
+{
+  "version": 5,
+  "dashboardId": "k0s-pods",
+  "title": "Kubernetes Pod Logs",
+  "description": "k0s pod logs — volume by namespace/pod and pod errors (k8s metadata from the container operator).",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_by_namespace",
+          "type": "line",
+          "title": "Volume by namespace",
+          "description": "Pod log rows over time, broken down by namespace.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", k8s_namespace_name AS \"breakdown_1\", count(*) AS \"y_axis_1\" FROM \"k0s_pods\" GROUP BY x_axis_1, breakdown_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "k0s_pods",
+                "stream_type": "logs",
+                "x": [{ "label": "Timestamp", "alias": "x_axis_1", "column": "_timestamp", "aggregationFunction": "histogram", "sortBy": "ASC" }],
+                "y": [{ "label": "count", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "breakdown": [{ "label": "namespace", "alias": "breakdown_1", "column": "k8s_namespace_name", "aggregationFunction": null }],
+                "z": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 10, "i": 1 }
+        },
+        {
+          "id": "panel_pod_errors",
+          "type": "table",
+          "title": "Pod errors by namespace/pod",
+          "description": "Error rows grouped by namespace and pod.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT k8s_namespace_name AS \"x_axis_1\", k8s_pod_name AS \"x_axis_2\", count(*) AS \"y_axis_1\" FROM \"k0s_pods\" WHERE match_all('error') GROUP BY x_axis_1, x_axis_2 ORDER BY y_axis_1 DESC LIMIT 30",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "k0s_pods",
+                "stream_type": "logs",
+                "x": [
+                  { "label": "namespace", "alias": "x_axis_1", "column": "k8s_namespace_name", "aggregationFunction": null },
+                  { "label": "pod", "alias": "x_axis_2", "column": "k8s_pod_name", "aggregationFunction": null }
+                ],
+                "y": [{ "label": "count", "alias": "y_axis_1", "column": "_timestamp", "aggregationFunction": "count" }],
+                "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 10, "w": 48, "h": 10, "i": 2 }
+        }
+      ]
+    }
+  ]
+}

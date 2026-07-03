@@ -1,0 +1,105 @@
+{
+  "version": 5,
+  "dashboardId": "uptime",
+  "title": "Uptime",
+  "description": "Blackbox-exporter HTTP probe results for the fleet's web UIs (Grafana, OpenObserve, node_exporter endpoints).",
+  "role": "",
+  "owner": "centralized_monitoring",
+  "variables": { "list": [], "showDynamicFilters": false },
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "panel_probe_success",
+          "type": "line",
+          "title": "Probe success by target",
+          "description": "1 = probe succeeded, 0 = probe failed, per probed URL.",
+          "config": { "show_legends": true, "unit": null, "decimals": 0 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "probe_success",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "probe_success", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 0, "w": 48, "h": 9, "i": 1 }
+        },
+        {
+          "id": "panel_probe_duration",
+          "type": "line",
+          "title": "Probe duration by target",
+          "description": "End-to-end probe latency — a climb often precedes a failed probe.",
+          "config": { "show_legends": true, "unit": "seconds", "decimals": 3 },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "probe_duration_seconds",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": { "stream": "probe_duration_seconds", "stream_type": "metrics", "x": [], "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] } },
+              "config": { "promql_legend": "{{instance}}", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 9, "w": 24, "h": 9, "i": 2 }
+        },
+        {
+          "id": "panel_current_status",
+          "type": "table",
+          "title": "Current status",
+          "description": "Latest probe_success value per target (1 = up, 0 = down).",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT instance AS \"x_axis_1\", MAX(value) AS \"x_axis_2\" FROM \"probe_success\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "probe_success",
+                "stream_type": "metrics",
+                "x": [
+                  { "label": "target", "alias": "x_axis_1", "column": "instance", "aggregationFunction": null },
+                  { "label": "up", "alias": "x_axis_2", "column": "value", "aggregationFunction": "max" }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 24, "y": 9, "w": 24, "h": 9, "i": 3 }
+        },
+        {
+          "id": "panel_http_status_codes",
+          "type": "table",
+          "title": "HTTP status codes",
+          "description": "Last observed HTTP status code per probed target.",
+          "config": { "show_legends": false },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT instance AS \"x_axis_1\", MAX(value) AS \"x_axis_2\" FROM \"probe_http_status_code\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "vrlFunctionQuery": "",
+              "customQuery": true,
+              "fields": {
+                "stream": "probe_http_status_code",
+                "stream_type": "metrics",
+                "x": [
+                  { "label": "target", "alias": "x_axis_1", "column": "instance", "aggregationFunction": null },
+                  { "label": "status code", "alias": "x_axis_2", "column": "value", "aggregationFunction": "max" }
+                ],
+                "y": [], "z": [], "breakdown": [], "filter": { "filterType": "group", "logicalOperator": "AND", "conditions": [] }
+              },
+              "config": { "promql_legend": "", "layer_type": "scatter", "weight_fixed": 1 }
+            }
+          ],
+          "layout": { "x": 0, "y": 18, "w": 48, "h": 9, "i": 4 }
+        }
+      ]
+    }
+  ]
+}
