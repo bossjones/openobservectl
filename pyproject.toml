@@ -19,6 +19,7 @@ openobservectl = "openobservectl.cli:app"
 [dependency-groups]
 dev = [
     "pytest>=8",
+    "pytest-asyncio>=0.24",
     "pytest-httpserver>=1.1",
     "pytest-mock>=3",
     "pytest-cov>=5",
@@ -53,9 +54,13 @@ select = ["E", "F", "UP", "B", "I"]
 ignore = ["E501", "B008"]
 
 [tool.pytest.ini_options]
-addopts = "-ra"
+addopts = "-ra -m 'not integration'"
 testpaths = ["tests"]
 filterwarnings = ["ignore::SyntaxWarning"]
+asyncio_mode = "auto"
+markers = [
+    "integration: opt-in live tests against a running OpenObserve (deselected by default)",
+]
 
 [tool.basedpyright]
 include = ["src"]

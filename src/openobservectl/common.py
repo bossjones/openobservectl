@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import ssl
 import subprocess
 import time
@@ -235,3 +236,18 @@ class CheckReport:
 def print_json(obj: Any) -> None:
     """Emit clean, parseable JSON to stdout (for `--json` / piping)."""
     print(json.dumps(obj, indent=2, default=str))
+
+
+# --- duration parsing ---------------------------------------------------------
+
+_DURATION = re.compile(r"^\s*(\d+)\s*([smhd])\s*$")
+_DURATION_UNIT_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def parse_duration_seconds(text: str) -> int:
+    """Parse a duration like '30s'/'5m'/'1h'/'2d' into seconds. Raises ValueError on bad format."""
+    match = _DURATION.match(text)
+    if not match:
+        raise ValueError(f"invalid duration {text!r}; use e.g. 30s, 5m, 1h, 2d")
+    value, unit = int(match.group(1)), match.group(2)
+    return value * _DURATION_UNIT_SECONDS[unit]
