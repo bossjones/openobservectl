@@ -20,6 +20,9 @@ just lint               # ruff format --check + ruff check + basedpyright + code
 just fmt                # ruff format . (apply formatting)
 just test               # pytest
 just help               # smoke-test both entrypoints (`openobservectl` and `python -m`)
+just check-pyrefly      # (alias `just pyrefly`) pyrefly type check vs. baseline — not wired into `check`
+just pyrefly-baseline   # regenerate pyrefly-baseline.json after fixing/adding errors
+just pyrefly-coverage   # pyrefly coverage report (typed/Any/untyped) as JSON
 ```
 
 Run a single test:
@@ -103,5 +106,9 @@ async `AsyncClient` for `logs tail`).
 
 Python `>=3.11,<4.0`. Linting: `ruff` (line-length 100; `E501`/`B008` ignored — `B008` because
 Typer relies on `typer.Option(...)` calls in argument defaults). Type checking: `basedpyright`
-(standard mode, `src` only). Spelling: `codespell`. Version is derived from git tags via
+(standard mode, `src` only). A second, non-blocking checker, `pyrefly`, runs against both `src`
+and `tests` (`[tool.pyrefly]`) with a committed error baseline (`pyrefly-baseline.json`, currently
+empty) and a type-coverage report (100% coverage / 99.4% strict as of the last run); see
+`specs/pyrefly.md` for the full feedback-loop workflow. It is intentionally **not** wired into
+`just lint`/`check`/CI. Spelling: `codespell`. Version is derived from git tags via
 `uv-dynamic-versioning` — there is no hardcoded version string.

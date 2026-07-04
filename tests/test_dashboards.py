@@ -9,16 +9,18 @@ import base64
 import json
 from importlib.resources import files
 from pathlib import Path
+from typing import Any
 
-from typer.testing import CliRunner
+from pytest_httpserver import HTTPServer
+from typer.testing import CliRunner, Result
 
 from openobservectl import cli as oo
 
-runner = CliRunner()
+runner: CliRunner = CliRunner()
 
 DEFAULT_AUTH = "Basic " + base64.b64encode(b"admin@example.com:Complexpass#123").decode()
 
-SHIPPED_DIR = Path(str(files("openobservectl") / "dashboards"))
+SHIPPED_DIR: Path = Path(str(files("openobservectl") / "dashboards"))
 EXPECTED_TITLES = {
     "Log Overview",
     "Error Triage",
@@ -35,16 +37,18 @@ EXPECTED_TITLES = {
 }
 
 
-def _run(base, *args):
+def _run(base: str, *args: str) -> Result:
     return runner.invoke(oo.app, ["--server-url", base, *args])
 
 
-def _write_dash(path: Path, title: str):
+def _write_dash(path: Path, title: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"version": 5, "title": title, "tabs": [{"panels": []}]}))
 
 
-def _base_check_server(httpserver, *, dashboards=None):
+def _base_check_server(
+    httpserver: HTTPServer, *, dashboards: list[dict[str, Any]] | None = None
+) -> str:
     """Endpoints the `check` command hits before the dashboards assertion."""
     httpserver.expect_request("/healthz").respond_with_json({"status": "ok"})
     httpserver.expect_request("/api/default/streams", method="GET").respond_with_json(
@@ -59,7 +63,7 @@ def _base_check_server(httpserver, *, dashboards=None):
     return httpserver.url_for("")
 
 
-def _panels(dash):
+def _panels(dash: dict[str, Any]) -> list[Any]:
     """Collect panels whether at top level or nested under tabs (v5)."""
     panels = list(dash.get("panels") or [])
     for tab in dash.get("tabs") or []:
@@ -70,7 +74,7 @@ def _panels(dash):
 # ---------------------------------------------------------------- dashboards list
 
 
-def test_dashboards_list_reads_folders_and_dashboards(httpserver):
+def test_dashboards_list_reads_folders_and_dashboards(httpserver: HTTPServer) -> None:
     httpserver.expect_request("/api/v2/default/folders/dashboards", method="GET").respond_with_json(
         {"list": [{"folderId": "Logs", "name": "Logs"}]}
     )
@@ -83,7 +87,7 @@ def test_dashboards_list_reads_folders_and_dashboards(httpserver):
     assert "Log Overview" in titles
 
 
-def test_dashboards_list_sends_basic_auth(httpserver):
+def test_dashboards_list_sends_basic_auth(httpserver: HTTPServer) -> None:
     httpserver.expect_request(
         "/api/v2/default/folders/dashboards",
         method="GET",
@@ -99,7 +103,7 @@ def test_dashboards_list_sends_basic_auth(httpserver):
 # -------------------------------------------------------------- dashboards import
 
 
-def test_import_creates_folder_and_posts(httpserver, tmp_path):
+def test_import_creates_folder_and_posts(httpserver: HTTPServer, tmp_path: Path) -> None:
     _write_dash(tmp_path / "Logs" / "board.json", "Log Overview")
     httpserver.expect_request("/api/v2/default/folders/dashboards", method="GET").respond_with_json(
         {"list": []}
@@ -121,7 +125,7 @@ def test_import_creates_folder_and_posts(httpserver, tmp_path):
     assert ("POST", "/api/default/dashboards") in methods
 
 
-def test_import_skips_non_dashboard_json(httpserver, tmp_path):
+def test_import_skips_non_dashboard_json(httpserver: HTTPServer, tmp_path: Path) -> None:
     """A top-level JSON array (e.g. raw log-sample files) is swept by the **/*.json
     glob but must be skipped, not crash the importer with .get() on a list."""
     _write_dash(tmp_path / "board.json", "Log Overview")
@@ -141,7 +145,7 @@ def test_import_skips_non_dashboard_json(httpserver, tmp_path):
     assert actions["samples.json"] == "skipped"
 
 
-def test_import_sends_basic_auth_on_post(httpserver, tmp_path):
+def test_import_sends_basic_auth_on_post(httpserver: HTTPServer, tmp_path: Path) -> None:
     _write_dash(tmp_path / "board.json", "Log Overview")
     httpserver.expect_request("/api/default/dashboards", method="GET").respond_with_json(
         {"dashboards": []}
@@ -155,7 +159,7 @@ def test_import_sends_basic_auth_on_post(httpserver, tmp_path):
     assert r.exit_code == 0, r.output
 
 
-def test_import_upserts_by_title(httpserver, tmp_path):
+def test_import_upserts_by_title(httpserver: HTTPServer, tmp_path: Path) -> None:
     """When a dashboard with the same title exists, import PUTs it (no second create)."""
     _write_dash(tmp_path / "board.json", "Log Overview")
     httpserver.expect_request("/api/default/dashboards", method="GET").respond_with_json(
@@ -177,7 +181,7 @@ def test_import_upserts_by_title(httpserver, tmp_path):
 # -------------------------------------------------------------- dashboards delete
 
 
-def test_delete_sends_delete_request(httpserver):
+def test_delete_sends_delete_request(httpserver: HTTPServer) -> None:
     httpserver.expect_request("/api/default/dashboards/xyz", method="DELETE").respond_with_json(
         {"code": 200}
     )
@@ -190,7 +194,9 @@ def test_delete_sends_delete_request(httpserver):
 # ----------------------------------------------------- check --require-dashboards
 
 
-def test_check_require_dashboards_passes_when_present(httpserver, tmp_path):
+def test_check_require_dashboards_passes_when_present(
+    httpserver: HTTPServer, tmp_path: Path
+) -> None:
     _write_dash(tmp_path / "board.json", "Log Overview")
     base = _base_check_server(
         httpserver, dashboards=[{"dashboardId": "d1", "title": "Log Overview"}]
@@ -201,7 +207,9 @@ def test_check_require_dashboards_passes_when_present(httpserver, tmp_path):
     assert any(c["name"] == "dashboards present" and c["status"] == "pass" for c in checks)
 
 
-def test_check_require_dashboards_fails_when_missing(httpserver, tmp_path):
+def test_check_require_dashboards_fails_when_missing(
+    httpserver: HTTPServer, tmp_path: Path
+) -> None:
     _write_dash(tmp_path / "board.json", "Log Overview")
     base = _base_check_server(httpserver, dashboards=[])
     r = _run(base, "--json", "check", "--require-dashboards", "--dashboards-dir", str(tmp_path))
@@ -213,7 +221,7 @@ def test_check_require_dashboards_fails_when_missing(httpserver, tmp_path):
 # ------------------------------------------------------- shipped dashboard JSON
 
 
-def test_shipped_dashboards_are_valid_json_with_title_and_panels():
+def test_shipped_dashboards_are_valid_json_with_title_and_panels() -> None:
     # Defensive: exclude any `logs/` dir even though the vendor copy shouldn't include one.
     files_ = sorted(f for f in SHIPPED_DIR.glob("**/*.json") if "logs" not in f.parts)
     assert files_, f"no dashboard JSON found under {SHIPPED_DIR}"
@@ -226,6 +234,6 @@ def test_shipped_dashboards_are_valid_json_with_title_and_panels():
     assert EXPECTED_TITLES <= titles, f"missing dashboards: {EXPECTED_TITLES - titles}"
 
 
-def test_shipped_dashboards_count_is_twelve():
+def test_shipped_dashboards_count_is_twelve() -> None:
     files_ = list(SHIPPED_DIR.glob("**/*.json"))
     assert len(files_) == 12

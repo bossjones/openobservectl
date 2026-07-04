@@ -134,7 +134,7 @@ class HttpError(Exception):
 
     def __init__(self, status: int, message: str = ""):
         super().__init__(f"HTTP {status}: {message}" if status else f"connection error: {message}")
-        self.status = status
+        self.status: int = status
 
 
 def http_get_json(
@@ -172,7 +172,7 @@ def poll(
     timeout: float = 60.0,
     interval: float = 2.0,
     catch: tuple[type[BaseException], ...] = (),
-):
+) -> object:
     """Call ``fn`` until it returns a truthy value or ``timeout`` elapses.
 
     Returns the first truthy result, or the last (falsy) result on timeout. Exceptions

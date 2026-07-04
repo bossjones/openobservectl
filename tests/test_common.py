@@ -7,13 +7,15 @@ shelling out to OpenTofu.
 
 import base64
 import json
+from typing import Any
 
 import pytest
+from pytest_httpserver import HTTPServer
 
 from openobservectl import common as oc
 
 
-def _basic(user, password):
+def _basic(user: str, password: str) -> str:
     token = base64.b64encode(f"{user}:{password}".encode()).decode()
     return f"Basic {token}"
 
@@ -21,7 +23,7 @@ def _basic(user, password):
 # --------------------------------------------------------------- parse_tofu_output
 
 
-def test_parse_tofu_output_extracts_ip_and_flags():
+def test_parse_tofu_output_extracts_ip_and_flags() -> None:
     data = {
         "server_ipv4": {"value": "10.0.0.5"},
         "enabled_exporters": {"value": ["enable_node_exporter", "enable_openobserve"]},
@@ -31,7 +33,7 @@ def test_parse_tofu_output_extracts_ip_and_flags():
     assert flags == {"enable_node_exporter", "enable_openobserve"}
 
 
-def test_parse_tofu_output_missing_flags_defaults_empty():
+def test_parse_tofu_output_missing_flags_defaults_empty() -> None:
     ip, flags = oc.parse_tofu_output({"server_ipv4": {"value": "1.2.3.4"}})
     assert ip == "1.2.3.4"
     assert flags == set()
@@ -40,13 +42,13 @@ def test_parse_tofu_output_missing_flags_defaults_empty():
 # ------------------------------------------------------------------- default_chdir
 
 
-def test_default_chdir_joins_lab_root_and_cluster():
+def test_default_chdir_joins_lab_root_and_cluster() -> None:
     chdir = oc.default_chdir("centralized_logging", "/some/lab")
     assert chdir.endswith("clusters/centralized_logging")
     assert chdir.startswith("/some/lab")
 
 
-def test_default_chdir_expands_user():
+def test_default_chdir_expands_user() -> None:
     chdir = oc.default_chdir("centralized_monitoring", "~/lab")
     assert "~" not in chdir
     assert chdir.endswith("clusters/centralized_monitoring")
@@ -55,10 +57,10 @@ def test_default_chdir_expands_user():
 # ----------------------------------------------------------------- resolve_target
 
 
-def test_resolve_target_prefers_server_url_and_skips_tofu():
-    calls = []
+def test_resolve_target_prefers_server_url_and_skips_tofu() -> None:
+    calls: list[str] = []
     t = oc.resolve_target(
-        port=3000, server_url="http://host:3000/", runner=lambda c: calls.append(c)
+        port=3000, server_url="http://host:3000/", runner=lambda c: calls.append(c) or {}
     )
     assert t.base_url == "http://host:3000"  # trailing slash stripped
     assert t.ip is None
@@ -66,7 +68,7 @@ def test_resolve_target_prefers_server_url_and_skips_tofu():
     assert calls == []  # tofu never invoked when a URL is given
 
 
-def test_resolve_target_uses_env_url_when_no_flag():
+def test_resolve_target_uses_env_url_when_no_flag() -> None:
     t = oc.resolve_target(
         port=3000,
         url_env="GRAFANA_URL",
@@ -76,7 +78,7 @@ def test_resolve_target_uses_env_url_when_no_flag():
     assert t.base_url == "http://x:3000"
 
 
-def test_resolve_target_explicit_url_beats_env():
+def test_resolve_target_explicit_url_beats_env() -> None:
     t = oc.resolve_target(
         port=3000,
         server_url="http://a:3000",
@@ -87,7 +89,7 @@ def test_resolve_target_explicit_url_beats_env():
     assert t.base_url == "http://a:3000"
 
 
-def test_resolve_target_via_tofu_builds_url_and_flags():
+def test_resolve_target_via_tofu_builds_url_and_flags() -> None:
     data = {
         "server_ipv4": {"value": "10.9.8.7"},
         "enabled_exporters": {"value": ["enable_openobserve"]},
@@ -102,10 +104,10 @@ def test_resolve_target_via_tofu_builds_url_and_flags():
     assert t.enabled_flags == {"enable_openobserve"}
 
 
-def test_resolve_target_passes_chdir_to_runner():
-    seen = {}
+def test_resolve_target_passes_chdir_to_runner() -> None:
+    seen: dict[str, str] = {}
 
-    def runner(chdir):
+    def runner(chdir: str) -> dict[str, Any]:
         seen["chdir"] = chdir
         return {"server_ipv4": {"value": "1.1.1.1"}}
 
@@ -115,7 +117,7 @@ def test_resolve_target_passes_chdir_to_runner():
     assert seen["chdir"].endswith("clusters/centralized_logging")
 
 
-def test_resolve_target_without_chdir_raises():
+def test_resolve_target_without_chdir_raises() -> None:
     with pytest.raises(ValueError, match="chdir"):
         oc.resolve_target(port=9090, runner=lambda c: pytest.fail("tofu should not run"))
 
@@ -123,14 +125,14 @@ def test_resolve_target_without_chdir_raises():
 # ------------------------------------------------------------ resolve_credentials
 
 
-def test_resolve_credentials_explicit_wins():
+def test_resolve_credentials_explicit_wins() -> None:
     assert oc.resolve_credentials("u", "p", default_user="admin", default_password="admin") == (
         "u",
         "p",
     )
 
 
-def test_resolve_credentials_env_fallback():
+def test_resolve_credentials_env_fallback() -> None:
     assert oc.resolve_credentials(
         None,
         None,
@@ -142,7 +144,7 @@ def test_resolve_credentials_env_fallback():
     ) == ("eu", "ep")
 
 
-def test_resolve_credentials_default_fallback():
+def test_resolve_credentials_default_fallback() -> None:
     assert oc.resolve_credentials(
         None, None, default_user="admin", default_password="secret", env={}
     ) == ("admin", "secret")
@@ -151,7 +153,7 @@ def test_resolve_credentials_default_fallback():
 # -------------------------------------------------------------------- CheckReport
 
 
-def test_check_report_pass_and_skip_exit_zero():
+def test_check_report_pass_and_skip_exit_zero() -> None:
     r = oc.CheckReport()
     r.add("health", True, "ok")
     r.skip("openobserve", "flag off")
@@ -163,7 +165,7 @@ def test_check_report_pass_and_skip_exit_zero():
     assert d["checks"][1]["status"] == "skip"
 
 
-def test_check_report_any_fail_exit_two():
+def test_check_report_any_fail_exit_two() -> None:
     r = oc.CheckReport()
     r.add("health", True)
     r.add("datasource", False, "unhealthy")
@@ -174,19 +176,19 @@ def test_check_report_any_fail_exit_two():
 # --------------------------------------------------------------------------- poll
 
 
-def test_poll_returns_first_truthy():
+def test_poll_returns_first_truthy() -> None:
     seq = iter([None, 0, "yes"])
     assert oc.poll(lambda: next(seq), timeout=5, interval=0) == "yes"
 
 
-def test_poll_returns_last_falsy_on_timeout():
+def test_poll_returns_last_falsy_on_timeout() -> None:
     assert oc.poll(lambda: None, timeout=0, interval=0) is None
 
 
-def test_poll_catches_listed_exceptions():
+def test_poll_catches_listed_exceptions() -> None:
     calls = {"n": 0}
 
-    def flaky():
+    def flaky() -> str:
         calls["n"] += 1
         if calls["n"] < 2:
             raise ValueError("boom")
@@ -198,7 +200,7 @@ def test_poll_catches_listed_exceptions():
 # ------------------------------------------------------------------ http_get_json
 
 
-def test_http_get_json_parses_and_sends_basic_auth(httpserver):
+def test_http_get_json_parses_and_sends_basic_auth(httpserver: HTTPServer) -> None:
     httpserver.expect_request(
         "/api/data", headers={"Authorization": _basic("u", "p")}
     ).respond_with_json({"ok": True})
@@ -206,14 +208,14 @@ def test_http_get_json_parses_and_sends_basic_auth(httpserver):
     assert out == {"ok": True}
 
 
-def test_http_get_json_raises_httperror_on_500(httpserver):
+def test_http_get_json_raises_httperror_on_500(httpserver: HTTPServer) -> None:
     httpserver.expect_request("/bad").respond_with_data("nope", status=500)
     with pytest.raises(oc.HttpError) as excinfo:
         oc.http_get_json(httpserver.url_for("/bad"))
     assert excinfo.value.status == 500
 
 
-def test_http_get_json_raises_on_connection_refused():
+def test_http_get_json_raises_on_connection_refused() -> None:
     # Nothing is listening on this port.
     with pytest.raises(oc.HttpError):
         oc.http_get_json("http://127.0.0.1:1/nope", timeout=1)
@@ -222,7 +224,7 @@ def test_http_get_json_raises_on_connection_refused():
 # ---------------------------------------------------------------------- print_json
 
 
-def test_print_json_emits_parseable_json(capsys):
+def test_print_json_emits_parseable_json(capsys: pytest.CaptureFixture[str]) -> None:
     oc.print_json({"a": 1, "b": [1, 2]})
     out = capsys.readouterr().out
     assert json.loads(out) == {"a": 1, "b": [1, 2]}
@@ -235,15 +237,15 @@ def test_print_json_emits_parseable_json(capsys):
     ("text", "seconds"),
     [("30s", 30), ("5m", 300), ("1h", 3600), ("2d", 172800)],
 )
-def test_parse_duration_seconds_parses_s_m_h_d(text, seconds):
+def test_parse_duration_seconds_parses_s_m_h_d(text: str, seconds: int) -> None:
     assert oc.parse_duration_seconds(text) == seconds
 
 
 @pytest.mark.parametrize("text", ["5", "5x", "m5", ""])
-def test_parse_duration_seconds_rejects_bad_format(text):
+def test_parse_duration_seconds_rejects_bad_format(text: str) -> None:
     with pytest.raises(ValueError):
         oc.parse_duration_seconds(text)
 
 
-def test_parse_duration_seconds_tolerates_surrounding_whitespace():
+def test_parse_duration_seconds_tolerates_surrounding_whitespace() -> None:
     assert oc.parse_duration_seconds(" 5m ") == 300

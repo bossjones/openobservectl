@@ -35,10 +35,10 @@ DEFAULT_USER = "admin@example.com"
 DEFAULT_PASSWORD = "Complexpass#123"
 
 # Dashboards ship as package data under src/openobservectl/dashboards/<Folder>/*.json.
-DASHBOARDS_DIR = Path(str(files("openobservectl") / "dashboards"))
+DASHBOARDS_DIR: Path = Path(str(files("openobservectl") / "dashboards"))
 
-app = typer.Typer(add_completion=False, no_args_is_help=True, help=__doc__)
-console = Console()
+app: typer.Typer = typer.Typer(add_completion=False, no_args_is_help=True, help=__doc__)
+console: Console = Console()
 
 
 @dataclass
@@ -204,7 +204,7 @@ def _emit(c: Ctx, data: Any, columns: list[str] | None = None, title: str | None
 
 
 @app.command()
-def health(ctx: typer.Context):
+def health(ctx: typer.Context) -> None:
     """Liveness probe (GET /healthz)."""
     c = resolve(ctx.obj)
     try:
@@ -218,7 +218,7 @@ def health(ctx: typer.Context):
 
 
 @app.command()
-def streams(ctx: typer.Context, type_: str = typer.Option(None, "--type")):
+def streams(ctx: typer.Context, type_: str = typer.Option(None, "--type")) -> None:
     """List ingest streams (GET /api/{org}/streams)."""
     c = resolve(ctx.obj)
     params = {"type": type_} if type_ else None
@@ -242,7 +242,7 @@ def search(
     start: int = typer.Option(None, "--start", help="start time (µs epoch)"),
     end: int = typer.Option(None, "--end", help="end time (µs epoch)"),
     size: int = typer.Option(100, "--size"),
-):
+) -> None:
     """Run a SQL search over a stream (POST /api/{org}/_search)."""
     c = resolve(ctx.obj)
     now_us = otail.now_micros()
@@ -265,7 +265,7 @@ def search(
 
 
 @app.command()
-def query(ctx: typer.Context, promql: str = typer.Argument(...)):
+def query(ctx: typer.Context, promql: str = typer.Argument(...)) -> None:
     """PromQL-compatible metrics query (GET /api/{org}/prometheus/api/v1/query)."""
     c = resolve(ctx.obj)
     try:
@@ -279,7 +279,7 @@ def query(ctx: typer.Context, promql: str = typer.Argument(...)):
 
 
 @app.command()
-def orgs(ctx: typer.Context):
+def orgs(ctx: typer.Context) -> None:
     """List organizations (GET /api/organizations)."""
     c = resolve(ctx.obj)
     try:
@@ -296,7 +296,7 @@ def orgs(ctx: typer.Context):
 # OpenObserve has no push/subscribe API for new logs, so `logs tail` is sliding-window
 # polling on `_timestamp` via the existing `_search` endpoint (see openobservectl/tail.py).
 
-logs_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Tail logs.")
+logs_app: typer.Typer = typer.Typer(add_completion=False, no_args_is_help=True, help="Tail logs.")
 app.add_typer(logs_app, name="logs")
 
 
@@ -309,7 +309,7 @@ def logs_tail(
     sql: str = typer.Option(None, "--sql", help="raw SQL (overrides --stream ordering)"),
     interval: float = typer.Option(2.0, "--interval", help="poll interval seconds (with -f)"),
     limit: int = typer.Option(200, "--limit", help="max rows per poll"),
-):
+) -> None:
     """Tail logs via sliding-window polling on `_timestamp` (no server push API)."""
     if stream and sql:
         _die("--stream and --sql cannot be combined; pass one or the other", code=2)
@@ -362,7 +362,7 @@ def logs_tail(
 # Response + payload shapes vary across OpenObserve versions (the image is :latest), so
 # extraction is deliberately tolerant — mirror the existing `data.get("list", data)` idiom.
 
-dashboards_app = typer.Typer(
+dashboards_app: typer.Typer = typer.Typer(
     add_completion=False, no_args_is_help=True, help="Manage OpenObserve dashboards."
 )
 app.add_typer(dashboards_app, name="dashboards")
@@ -486,7 +486,7 @@ def _expected_titles(root: Path) -> set[str]:
 
 
 @dashboards_app.command("list")
-def dashboards_list(ctx: typer.Context):
+def dashboards_list(ctx: typer.Context) -> None:
     """List installed dashboards across folders (GET /api/{org}/dashboards)."""
     c = resolve(ctx.obj)
     rows: list[dict[str, str]] = []
@@ -514,7 +514,7 @@ def dashboards_list(ctx: typer.Context):
 def dashboards_import(
     ctx: typer.Context,
     path: Path = typer.Argument(None, help=f"dashboards dir or file (default: {DASHBOARDS_DIR})"),
-):
+) -> None:
     """Load dashboard JSON into OpenObserve, upserting by title (idempotent)."""
     c = resolve(ctx.obj)
     root = path or DASHBOARDS_DIR
@@ -575,7 +575,7 @@ def dashboards_delete(
     ctx: typer.Context,
     dashboard_id: str = typer.Argument(...),
     folder: str = typer.Option("default", "--folder"),
-):
+) -> None:
     """Delete a dashboard by id (DELETE /api/{org}/dashboards/<id>)."""
     c = resolve(ctx.obj)
     try:
@@ -591,18 +591,20 @@ def dashboards_delete(
 
 # --- config -------------------------------------------------------------------
 
-config_app = typer.Typer(add_completion=False, no_args_is_help=True, help="Inspect config.")
+config_app: typer.Typer = typer.Typer(
+    add_completion=False, no_args_is_help=True, help="Inspect config."
+)
 app.add_typer(config_app, name="config")
 
 
 @config_app.command("path")
-def config_path():
+def config_path() -> None:
     """Print the resolved default config file path."""
     console.print(str(ocfg.default_config_path()))
 
 
 @config_app.command("list")
-def config_list(ctx: typer.Context):
+def config_list(ctx: typer.Context) -> None:
     """List profile names defined in the config file."""
     opts: Options = ctx.obj
     cfg_path = (
@@ -643,7 +645,7 @@ def check(
         "--dashboards-dir",
         help=f"expected dashboards (default: {DASHBOARDS_DIR})",
     ),
-):
+) -> None:
     """Assert OpenObserve health + auth (+ optional streams/metrics/logs/dashboards); exit nonzero on failure."""
     c = resolve(ctx.obj)
     report = oc.CheckReport()
