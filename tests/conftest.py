@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import textwrap
+from pathlib import Path
 
 import pytest
 
-SAMPLE_CONFIG = textwrap.dedent(
+SAMPLE_CONFIG: str = textwrap.dedent(
     """
     profiles:
       default:
@@ -26,7 +27,7 @@ SAMPLE_CONFIG = textwrap.dedent(
 
 
 @pytest.fixture
-def sample_config_path(tmp_path):
+def sample_config_path(tmp_path: Path) -> Path:
     p = tmp_path / "config.yaml"
     p.write_text(SAMPLE_CONFIG)
     return p
